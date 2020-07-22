@@ -1,0 +1,328 @@
+
+<html>
+	<title>Map reConstructor</title>
+	<style type="text/css">
+		#progressbarOuter{ display: block; border: 2px solid gray; color: gray; background-color: white; border-radius: 8px; font-size: 20px; font-weight: bold; width:204px; height:40px; position:relative; }
+		#progressbarOuter span{ display:block; text-align:center; width:100%; position:absolute; z-index:2; top:0; left:0; line-height:36px; }
+		#progressbarInner{border: 0px solid gray; color: #000; background-color: #88f; border-radius: 3px; font-size: 20px; font-weight: bold; width:0px; height:36px; text-align: center; position:relative; z-index:1;  padding:2px; }
+		.custom-file-input { display: block; }
+		.custom-file-input input { visibility: hidden; width: 100px; }
+		.custom-file-input:before {width:148px; content: 'Choose File'; display: block; border: 2px solid gray; color: gray; background-color: white; padding: 8px 12px 8px 44px; border-radius: 8px; font-size: 20px; font-weight: bold; background-size: 30px auto; background-position: 3px center;  background-repeat:no-repeat; }
+		.button { display: block; width:208px; border: 2px solid gray; color: gray; background-color: white; padding: 8px 44px 8px 44px; border-radius: 8px; font-size: 20px; font-weight: bold; }
+		textarea { white-space: nowrap; overflow: auto; }
+		select { display: inline-block; border: 2px solid gray; color: gray; background-color: white; padding: 8px; border-radius: 8px; font-size: 20px; font-weight: bold; }
+		*:focus { outline: none; }
+	</style>
+
+<script>
+
+	//var inArray;
+	var myPalette = new Array();
+	var tileArray = new Array();
+	var tileMap = new Array();
+	var currentTile = 0;
+	var tileWidth = 8;
+	var tileHeight = 8;
+
+	
+	function init() {
+		document.getElementById('files').addEventListener('change', handleFileSelect, false);
+		var twidth = document.getElementById("twidth");
+		var theight = document.getElementById("theight");
+		for(var i=1; i<=64; i++){
+			var option = document.createElement("OPTION");
+			twidth.options.add(option);
+			option.text = i;
+			option.value = i;
+		}
+		for(var i=1; i<=64; i++){
+			var option = document.createElement("OPTION");
+			theight.options.add(option);
+			option.text = i;
+			option.value = i;
+		}
+		twidth.value = 8;
+		theight.value = 8;
+		
+	}
+		
+	function decToHex(buffer) {
+		var s = '', h = '0123456789ABCDEF';
+		s = h[buffer >> 4] + h[buffer & 15];
+		return '0x' + s;
+	}
+		
+	function checkColour(rgb565){
+		var al = myPalette.length;
+		for(t=0; t<al; t++){
+			if(rgb565 == myPalette[t]) return t;
+		}
+		myPalette[t] = rgb565;
+		return t;
+	}
+
+
+	function checkTile(thisArray){
+
+		var doesThisMatch = true;
+		var tileNum = -1;
+
+		// create first tile if new
+		if(tileArray.length==0){
+			tileArray[0] = new Array();
+			for (i = 0; i < thisArray.length; i++) {
+				tileArray[0][i] = thisArray[i];
+			}
+			tileMap[currentTile++] = 0;
+			tileNum = 0;
+		}else{
+			var numPixels = tileWidth*tileHeight;
+			for(t=0; t<tileArray.length; t++){
+				doesThisMatch = true;
+				
+				// array1.every(function(element, index) { return element === array2[index]; });
+				
+				for(i=0; i<numPixels; i++){
+					if(doesThisMatch == false) break;
+					if(tileArray[t][i] != thisArray[i]){
+						doesThisMatch = false;
+					}
+				}
+				
+				if(doesThisMatch == true){
+					tileNum = t;
+				}
+			}
+
+		}
+		return tileNum;
+	}
+
+
+	function convertImage(){
+
+		var img = document.getElementById("myImg");
+		txt = document.getElementById("theOutput");
+		var canvas = document.createElement("canvas");
+		var ctx = canvas.getContext('2d');
+		var currentTile = 0;
+		var tempArray = new Array();
+		var tempArrayFlip = new Array();
+		var flipArray = new Array();
+
+		tileWidth = document.getElementById("twidth").value;
+		tileHeight = document.getElementById("theight").value;
+		//console.log(tileWidth);
+
+		var mapWidth = img.width/tileWidth;
+		var mapHeight = img.height/tileHeight;
+		var totalTiles = mapWidth * mapHeight;
+		var tileCount = 0;
+		var y1=0;
+		var x1=0;
+		myPalette[0] = 34847; // bg colour
+		myPalette[1] = 0; // black
+		myPalette[2] = 40179; // grey
+		myPalette[3] = 65535; // white
+		
+		// use an asyc loop so that the UI doesn't freeze.
+		(function loop(){
+		
+			ctx.drawImage(img, -x1*tileWidth, -y1*tileHeight);
+			for(y=0; y<tileHeight; y++){
+				for(x=0; x<tileWidth; x++){
+					var red = ctx.getImageData(x, y, 1, 1).data[0];
+					var green = ctx.getImageData(x, y, 1, 1).data[1];
+					var blue = ctx.getImageData(x, y, 1, 1).data[2];
+					
+					var b = (blue >> 3) & 0x1f;
+					var g = ((green >> 2) & 0x3f);// << 5;
+					var r = ((red >> 3) & 0x1f);// << 11;
+						
+					var rgb565 = (r<<11) | (g<<5) | b;
+					// Create a tile from the palette data
+					var colour = checkColour(rgb565);
+					tempArray[x+tileWidth*y] = colour;
+					tempArrayFlip[(tileWidth-x-1)+tileWidth*y] = colour;					
+				}
+			}
+/*
+			var s=0;
+			for(y=0; y<tileHeight; y++){
+				for(x=0; x<tileWidth; x++){
+					txt.value += tempArray[s++];
+					txt.value += ',';
+				}
+				txt.value += '\n';
+			}
+			var s=0;
+			for(y=0; y<tileHeight; y++){
+				for(x=0; x<tileWidth; x++){
+					txt.value += tempArrayFlip[s++];
+					txt.value += ',';
+				}
+				txt.value += '\n';
+			}
+			
+*/			
+			//flipArray[currentTile]=0;
+			var isFlipped = 0;
+			//if(currentTile==0) flipArray[currentTile]=0;
+			var result = checkTile(tempArrayFlip);
+			
+			// if result == -1 then nothing found, try flipped
+			if(result == -1){
+				result = checkTile(tempArray);
+			}else{
+				//flipArray[currentTile]=1;
+				isFlipped = 1;
+			}
+			
+			// if still no result, create tile
+			if(result == -1){
+				var p = tileArray.length;
+				tileArray[p] = new Array();
+				for (i = 0; i < tempArray.length; i++) {
+					tileArray[p][i] = tempArray[i];
+				}
+				result = p;
+				//flipArray[currentTile]=0;
+				isFlipped = 0;
+			}
+			// record tile number and flipped value in same 16bit number
+			tileMap[currentTile++] = result | (isFlipped << 15);
+			
+			
+			tileCount++;
+			if(++x1==mapWidth){
+				x1=0;
+				y1++;
+			}
+
+
+			if(tileCount < totalTiles){
+				var container = document.getElementById("progressbarInner");
+				container.style.width = (200/totalTiles) * tileCount;
+				container = document.getElementById("percentage");
+				container.innerHTML = Math.floor((100/totalTiles) * tileCount) + '%';
+				setTimeout(loop, 0);
+			}else{
+				txt.value='';			
+				// Palette data
+				txt.value += '//Total colors ';
+				txt.value += myPalette.length;
+				txt.value += '\n';
+				txt.value += 'const uint16_t palette[] = {\n';
+				for(t=0; t<myPalette.length; t++){
+					txt.value += myPalette[t];
+					if(t < myPalette.length-1){
+						txt.value += ', ';
+					}else{
+						txt.value += '\n';
+					}
+				}
+				txt.value += '};\n\n';
+
+				// Tile data
+				txt.value += '//Tile Data \n//';
+				txt.value += tileArray.length;
+				txt.value += ' Tiles \nconst uint8_t tiles[]={\n';
+
+				for(t=0; t<tileArray.length; t++){
+					txt.value += tileArray[t];
+					txt.value += ',\n';
+				}
+					txt.value += '};\n\n';
+				
+				
+				// Map data
+				txt.value += '//Map Data \n';
+				txt.value += 'const uint16_t map[]={\n';
+				txt.value += mapWidth;
+				txt.value += ', ';
+				txt.value += mapHeight;
+				txt.value += ',\n';
+				for(t=0; t<tileMap.length; t++){
+					txt.value += tileMap[t];
+					txt.value += ', ';
+					if((t+1)%mapWidth==0){
+						txt.value += '\n';
+					}
+				}
+					txt.value += '};\n\n';
+/*
+				// Flip data
+				txt.value += '//Flip Data \n';
+				txt.value += 'const uint8_t flip[]={\n';
+				for(t=0; t<tileMap.length; t++){
+					txt.value += flipArray[t];
+					txt.value += ', ';
+					if((t+1)%mapWidth==0){
+						txt.value += '\n';
+					}
+				}
+					txt.value += '};\n\n';
+*/
+
+			}
+			
+		})();
+		
+	}
+
+
+	function handleFileSelect(evt) {
+		
+
+		if (this.files && this.files[0]) {
+			var reader = new FileReader();
+			reader.onload = function (e) {
+				var img = document.getElementById("myImg");
+				img.src = e.target.result;
+			}
+			reader.readAsDataURL(this.files[0]);
+		}
+
+
+
+
+	}
+	
+	function copyCode(){
+		txt = document.getElementById("theOutput");
+		
+		txt.select();
+        try{
+			return document.execCommand("copy");  // Security exception may be thrown by some browsers.
+        } catch (ex) {
+            console.warn("Copy to clipboard failed.", ex);
+            return false;
+        }
+		
+	}
+	
+
+</script>
+
+<body onload="init()">
+
+<h1>Image to map convertor</h1>
+
+<label class="custom-file-input">
+	<input id="files" type="file" accept=".png">
+</label>
+
+<img id="myImg"></img><br/>
+
+<select id="twidth"></select> Tile Width<br/><br/>
+<select id="theight"></select> Tile Height<br/><br/>
+
+<button onclick="reSample=0; convertImage();return false;" class="button">Convert</button><br/>
+
+<div id="progressbarOuter"><span id="percentage">0%</span><div id="progressbarInner"></div></div><br/>
+
+
+<textarea id="theOutput" name="theOutput" rows="25" cols="120"></textarea><br/><br/>
+<button onclick="copyCode();return false;" class="button">Copy Code</button><br/>
+
+</body></html>
