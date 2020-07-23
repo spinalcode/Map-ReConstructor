@@ -146,35 +146,14 @@
 					tempArrayFlip[(tileWidth-x-1)+tileWidth*y] = colour;					
 				}
 			}
-/*
-			var s=0;
-			for(y=0; y<tileHeight; y++){
-				for(x=0; x<tileWidth; x++){
-					txt.value += tempArray[s++];
-					txt.value += ',';
-				}
-				txt.value += '\n';
-			}
-			var s=0;
-			for(y=0; y<tileHeight; y++){
-				for(x=0; x<tileWidth; x++){
-					txt.value += tempArrayFlip[s++];
-					txt.value += ',';
-				}
-				txt.value += '\n';
-			}
-			
-*/			
-			//flipArray[currentTile]=0;
+
 			var isFlipped = 0;
-			//if(currentTile==0) flipArray[currentTile]=0;
 			var result = checkTile(tempArrayFlip);
 			
 			// if result == -1 then nothing found, try flipped
 			if(result == -1){
 				result = checkTile(tempArray);
 			}else{
-				//flipArray[currentTile]=1;
 				isFlipped = 1;
 			}
 			
@@ -186,7 +165,6 @@
 					tileArray[p][i] = tempArray[i];
 				}
 				result = p;
-				//flipArray[currentTile]=0;
 				isFlipped = 0;
 			}
 			// record tile number and flipped value in same 16bit number
@@ -207,7 +185,18 @@
 				container.innerHTML = Math.floor((100/totalTiles) * tileCount) + '%';
 				setTimeout(loop, 0);
 			}else{
-				txt.value='';			
+				txt.value='';
+				txt.value +='// tile map\n';
+				txt.value +='#define bgTileSizeH ';
+				txt.value += tileHeight;
+				txt.value += '\n';
+				txt.value +='#define bgTileSizeW ';
+				txt.value += tileWidth;
+				txt.value += '\n';
+				txt.value +='#define tbt bgTileSizeH*bgTileSizeW\n';
+				txt.value += '\n';
+
+
 				// Palette data
 				txt.value += '//Total colors ';
 				txt.value += myPalette.length;
